@@ -139,6 +139,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                             cards: game.getCards(clientSocket.id),
                             curMove: [],
                             curPlayer: true,
+                            currentPlayerId: game.curPlayer,
                             playerCardCounts
                         });
                     } else {
@@ -146,6 +147,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                             cards: game.getCards(clientSocket.id),
                             curMove: [],
                             curPlayer: false,
+                            currentPlayerId: game.curPlayer,
                             playerCardCounts
                         });
                     }
@@ -176,6 +178,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                             cards: game.getCards(clientSocket.id),
                             curMove: game.curMove,
                             curPlayer: true,
+                            currentPlayerId: game.curPlayer,
                             playerCardCounts
                         });
                     } else {
@@ -183,6 +186,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                             cards: game.getCards(clientSocket.id),
                             curMove: game.curMove,
                             curPlayer: false,
+                            currentPlayerId: game.curPlayer,
                             playerCardCounts
                         });
                     }

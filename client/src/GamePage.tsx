@@ -79,12 +79,14 @@ export default function Game({
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [isWinner, setIsWinner] = useState<boolean>(false);
   const [playerCardCounts, setPlayerCardCounts] = useState<PlayerCardCount[]>([]);
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
 
   useEffect(() => {
-    const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean; playerCardCounts: PlayerCardCount[] }) => {
+    const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean; currentPlayerId: string; playerCardCounts: PlayerCardCount[] }) => {
       setCards(data.cards.map((card: [number, number]) => [card, false]));
       setCurPlay(data.curMove);
       setCurPlayer(data.curPlayer);
+      setCurrentPlayerId(data.currentPlayerId);
       setPlayerCardCounts(data.playerCardCounts);
       setGameStarted(true);
     };
@@ -182,13 +184,35 @@ export default function Game({
         ))}
       </div>
     </div>
-    {gameStarted && (
-      <div className="absolute top-4 right-4 flex flex-col gap-4">
-        {playerCardCounts
-          .filter((p) => p.id !== socket.id)
-          .map((player, playerIndex) => (
-            <div key={player.id} className="bg-gray-800/50 p-2 rounded-lg">
-              <div className="text-sm mb-1">P{playerIndex + 1}</div>
+    {gameStarted && (() => {
+      const myIndex = playerCardCounts.findIndex((p) => p.id === socket.id);
+      const totalPlayers = playerCardCounts.length;
+
+      // Position styles for opponents: right, top, left (clockwise from current player)
+      const positions = [
+        "fixed right-4 top-1/2 -translate-y-1/2", // 1 after me (right)
+        "fixed top-4 left-1/2 -translate-x-1/2",   // 2 after me (top/across)
+        "fixed left-4 top-1/2 -translate-y-1/2",   // 3 after me (left)
+      ];
+
+      return playerCardCounts
+        .map((player, index) => {
+          if (player.id === socket.id) return null;
+
+          // Calculate relative position (how many seats clockwise from me)
+          const relativePos = (index - myIndex + totalPlayers) % totalPlayers;
+          const positionClass = positions[relativePos - 1] || positions[0];
+
+          return (
+            <div
+              key={player.id}
+              className={`${positionClass} p-2 rounded-lg ${
+                currentPlayerId === player.id
+                  ? "bg-yellow-500/50 ring-2 ring-yellow-400"
+                  : "bg-gray-800/50"
+              }`}
+            >
+              <div className="text-sm mb-1">P{index + 1}</div>
               <div className="flex">
                 {Array.from({ length: player.count }).map((_, i) => (
                   <img
@@ -201,10 +225,16 @@ export default function Game({
                 ))}
               </div>
             </div>
-          ))}
+          );
+        });
+    })()}
+    {curPlayer && !gameOver && (
+      <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="text-3xl font-bold text-yellow-400 bg-black/50 px-6 py-3 rounded-lg animate-pulse">
+          It's your turn!
+        </div>
       </div>
     )}
-    {curPlayer ? <div>It's your turn!</div> : null}
     <div className="flex flex-col items-center fixed bottom-0 left-1/2 -translate-x-1/2">
       {!gameStarted && (
         <button
