@@ -8,23 +8,6 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://lo
   withCredentials: true
 });
 
-// socket.io.on("reconnect", (attempt) => {
-//   console.info("Reconnected on attempt: " + attempt);
-// });
-
-// socket.io.on("reconnect_attempt", (attempt) => {
-//   console.info("Reconnection attempt: " + attempt);
-// });
-
-// socket.io.on("reconnect_error", (error) => {
-//   console.info("Reconnection error: " + error);
-// });
-
-// socket.io.on("reconnect_failed", () => {
-//   console.info("Reconnection failed");
-//   alert("We are unable to connect you to the web socket.");
-// });
-
 function App() {
   return (
     <Routes>
