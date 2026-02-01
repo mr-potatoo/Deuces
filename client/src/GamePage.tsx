@@ -186,11 +186,13 @@ export default function Game({
       )}
       <div className="flex mb-4">
         {curPlay.map(
-          (card: [number, number]) => (
-            <Card
-              inHand = {false}
-              card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
-            />
+          (card: [number, number], index: number) => (
+            <div key={index} className={index > 0 ? "-ml-20" : ""}>
+              <Card
+                inHand={false}
+                card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
+              />
+            </div>
           )
         )}
       </div>
@@ -205,12 +207,17 @@ export default function Game({
       <div className="flex mb-4">
         {cards.map(
           ([card, selected]: [[number, number], boolean], index: number) => (
-            <Card
+            <div
               key={index}
-              selected={selected}
-              card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
-              onCardClick={() => handleCardClick(index)}
-            />
+              className={index > 0 ? "-ml-20" : ""}
+              style={{ zIndex: index }}
+            >
+              <Card
+                selected={selected}
+                card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
+                onCardClick={() => handleCardClick(index)}
+              />
+            </div>
           )
         )}
       </div>
