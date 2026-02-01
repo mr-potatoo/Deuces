@@ -5,6 +5,7 @@ import type { ServerToClientEvents, ClientToServerEvents } from "../../typings";
 
 interface Player {
   id: string;
+  name: string;
   ready: boolean;
 }
 
@@ -39,6 +40,7 @@ values.forEach((val) => {
 
 interface PlayerCardCount {
   id: string;
+  name: string;
   count: number;
 }
 
@@ -91,7 +93,7 @@ export default function Game({
       setGameStarted(true);
     };
 
-    const handlePlayerJoined = (data: { playerId: string; playerCount: number; players: { id: string; ready: boolean }[] }) => {
+    const handlePlayerJoined = (data: { playerId: string; playerCount: number; players: { id: string; name: string; ready: boolean }[] }) => {
       setPlayers(data.players);
     };
 
@@ -105,7 +107,7 @@ export default function Game({
       );
     };
 
-    const handleRoomState = (data: { players: { id: string; ready: boolean }[] }) => {
+    const handleRoomState = (data: { players: { id: string; name: string; ready: boolean }[] }) => {
       setPlayers(data.players);
     };
 
@@ -212,7 +214,7 @@ export default function Game({
                   : "bg-gray-800/50"
               }`}
             >
-              <div className="text-sm mb-1">P{index + 1}</div>
+              <div className="text-sm mb-1 font-semibold">{player.name}</div>
               <div className="flex">
                 {Array.from({ length: player.count }).map((_, i) => (
                   <img

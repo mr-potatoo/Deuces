@@ -20,6 +20,7 @@ function shuffle(deck: Card[]) {
 
 export class GameState {
     players: Record<string, Card[]> = {};
+    playerNames: Record<string, string> = {};
     // list of ids
     playerOrder: string[] = [];
     curMove: Card[] = [];
@@ -30,9 +31,10 @@ export class GameState {
     curPlayer: string = "";
     started: boolean = false;
 
-    addPlayer(id: string){
+    addPlayer(id: string, name: string){
         if (this.playerOrder.length < 4){
             this.playerOrder.push(id);
+            this.playerNames[id] = name;
             return true;
         } else {
             return false;
@@ -41,6 +43,11 @@ export class GameState {
 
     removePlayer(id: string){
         this.playerOrder = this.playerOrder.filter((player)=>(player!=id));
+        delete this.playerNames[id];
+    }
+
+    getPlayerName(id: string): string {
+        return this.playerNames[id] || "Unknown";
     }
 
     startGame(){

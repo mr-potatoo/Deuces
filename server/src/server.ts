@@ -37,20 +37,21 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
     console.log(`Client connected: ${socket.id}`);
 
     // Create a new room
-    socket.on("createRoom", () => {
+    socket.on("createRoom", (data: { playerName: string }) => {
         const roomId = generateRoomId();
         const game = new GameState();
         rooms.set(roomId, game);
 
         socket.join(roomId);
         playerRooms.set(socket.id, roomId);
-        game.addPlayer(socket.id);
+        game.addPlayer(socket.id, data.playerName);
 
         socket.emit("roomCreated", { roomId });
 
         // Send player list to the creator
         const players = game.playerOrder.map(id => ({
             id,
+            name: game.getPlayerName(id),
             ready: game.readied.has(id)
         }));
         socket.emit("playerJoined", {
@@ -59,12 +60,12 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
             players
         });
 
-        console.log(`Room ${roomId} created by ${socket.id}`);
+        console.log(`Room ${roomId} created by ${data.playerName} (${socket.id})`);
     });
 
     // Join an existing room
-    socket.on("joinRoom", (data: { roomId: string }) => {
-        const { roomId } = data;
+    socket.on("joinRoom", (data: { roomId: string; playerName: string }) => {
+        const { roomId, playerName } = data;
         const game = rooms.get(roomId);
 
         if (!game) {
@@ -72,14 +73,15 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
             return;
         }
 
-        if (game.addPlayer(socket.id)) {
+        if (game.addPlayer(socket.id, playerName)) {
             socket.join(roomId);
             playerRooms.set(socket.id, roomId);
-            console.log(`Player ${socket.id} joined room ${roomId}`);
+            console.log(`Player ${playerName} (${socket.id}) joined room ${roomId}`);
 
             // Build players list with ready states
             const players = game.playerOrder.map(id => ({
                 id,
+                name: game.getPlayerName(id),
                 ready: game.readied.has(id)
             }));
 
@@ -95,6 +97,71 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         }
     });
 
+    // Quick join - find an available room or create a new one
+    socket.on("quickJoin", (data: { playerName: string }) => {
+        const { playerName } = data;
+
+        // Find a room that isn't full and hasn't started
+        let availableRoomId: string | null = null;
+        for (const [roomId, game] of rooms) {
+            if (game.playerOrder.length < 4 && !game.started) {
+                availableRoomId = roomId;
+                break;
+            }
+        }
+
+        if (availableRoomId) {
+            // Join the available room
+            const game = rooms.get(availableRoomId)!;
+            game.addPlayer(socket.id, playerName);
+            socket.join(availableRoomId);
+            playerRooms.set(socket.id, availableRoomId);
+            console.log(`Player ${playerName} (${socket.id}) quick joined room ${availableRoomId}`);
+
+            // Emit roomCreated so client knows which room they joined
+            socket.emit("roomCreated", { roomId: availableRoomId });
+
+            // Build players list with ready states
+            const players = game.playerOrder.map(id => ({
+                id,
+                name: game.getPlayerName(id),
+                ready: game.readied.has(id)
+            }));
+
+            // Notify all players in room about new player
+            io.to(availableRoomId).emit("playerJoined", {
+                playerId: socket.id,
+                playerCount: game.playerOrder.length,
+                players
+            });
+        } else {
+            // No available room, create a new one
+            const roomId = generateRoomId();
+            const game = new GameState();
+            rooms.set(roomId, game);
+
+            socket.join(roomId);
+            playerRooms.set(socket.id, roomId);
+            game.addPlayer(socket.id, playerName);
+
+            socket.emit("roomCreated", { roomId });
+
+            // Send player list to the creator
+            const players = game.playerOrder.map(id => ({
+                id,
+                name: game.getPlayerName(id),
+                ready: game.readied.has(id)
+            }));
+            socket.emit("playerJoined", {
+                playerId: socket.id,
+                playerCount: game.playerOrder.length,
+                players
+            });
+
+            console.log(`Room ${roomId} created via quick join by ${playerName} (${socket.id})`);
+        }
+    });
+
     socket.on("requestRoomState", () => {
         const roomId = playerRooms.get(socket.id);
         if (!roomId) return;
@@ -104,6 +171,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
 
         const players = game.playerOrder.map(id => ({
             id,
+            name: game.getPlayerName(id),
             ready: game.readied.has(id)
         }));
 
@@ -128,6 +196,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
             // Build player card counts
             const playerCardCounts = game.playerOrder.map(id => ({
                 id,
+                name: game.getPlayerName(id),
                 count: game.getCards(id).length
             }));
 
@@ -167,6 +236,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
             // Build player card counts
             const playerCardCounts = game.playerOrder.map(id => ({
                 id,
+                name: game.getPlayerName(id),
                 count: game.getCards(id).length
             }));
 

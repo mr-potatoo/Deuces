@@ -31,7 +31,7 @@ export default function JoinRoomPage({ socket }: JoinRoomPageProps) {
       navigate(`/game/${roomId}`);
     });
 
-    socket.emit("createRoom");
+    socket.emit("createRoom", { playerName });
   };
 
   const handleJoinRoom = () => {
@@ -61,7 +61,27 @@ export default function JoinRoomPage({ socket }: JoinRoomPageProps) {
       setIsJoining(false);
     });
 
-    socket.emit("joinRoom", { roomId: roomCode.toUpperCase() });
+    socket.emit("joinRoom", { roomId: roomCode.toUpperCase(), playerName });
+  };
+
+  const handleQuickJoin = () => {
+    if (!playerName.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+
+    setIsJoining(true);
+    setError("");
+
+    // Listen for room assignment
+    socket.once("roomCreated", ({ roomId }) => {
+      console.log(`Quick joined room: ${roomId}`);
+      localStorage.setItem("playerName", playerName);
+      localStorage.setItem("roomId", roomId);
+      navigate(`/game/${roomId}`);
+    });
+
+    socket.emit("quickJoin", { playerName });
   };
 
   return (
@@ -99,6 +119,25 @@ export default function JoinRoomPage({ socket }: JoinRoomPageProps) {
               disabled={isJoining}
               className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
+          </div>
+
+          {/* Quick Join Button */}
+          <button
+            onClick={handleQuickJoin}
+            disabled={isJoining}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isJoining ? "Finding game..." : "Quick Join"}
+          </button>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">OR</span>
+            </div>
           </div>
 
           {/* Create Room Button */}
