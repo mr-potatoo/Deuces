@@ -57,12 +57,18 @@ function Card({
 }) {
   return (
     <button
-      className={`p-0 rounded-lg cursor-pointer ${
-        inHand ? "hover:shadow-lg hover:shadow-white" : ""
-      } ${selected ? "!-translate-y-6" : ""} transition-transform duration-300`}
+      className={`p-0 rounded-xl cursor-pointer transition-all duration-300 ${
+        inHand
+          ? "hover:shadow-xl hover:shadow-white/30 hover:-translate-y-2"
+          : "shadow-lg shadow-black/50"
+      } ${selected ? "!-translate-y-8 ring-2 ring-yellow-400 shadow-xl shadow-yellow-400/30" : ""}`}
       onClick={onCardClick}
     >
-      <img src={cardImages[card]} className="w-30 block rounded-lg" />
+      <img
+        src={cardImages[card]}
+        className="w-28 block rounded-xl shadow-md"
+        alt={card}
+      />
     </button>
   );
 }
@@ -156,134 +162,205 @@ export default function Game({
   }
 
   return (
-    <>
-    {gameOver && (
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-        <div className="text-center">
-          <h1 className={`text-6xl font-bold ${isWinner ? "text-green-400" : "text-red-400"}`}>
-            {isWinner ? "You Won!" : "You Lost"}
-          </h1>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-green-950 overflow-hidden">
+      {/* Decorative background pattern */}
+      <div className="fixed inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px)`
+        }}></div>
+      </div>
+
+      {/* Game Over Overlay */}
+      {gameOver && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center transform animate-bounce">
+            <div className={`text-8xl font-black mb-4 ${isWinner ? "text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)]" : "text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]"}`}>
+              {isWinner ? "VICTORY!" : "DEFEAT"}
+            </div>
+            <div className={`text-2xl ${isWinner ? "text-yellow-200" : "text-red-200"}`}>
+              {isWinner ? "Congratulations! You've won the game!" : "Better luck next time!"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room Info Panel */}
+      <div className="fixed top-4 left-4 z-10">
+        <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-xl">
+          <div className="text-xs text-emerald-300 uppercase tracking-wider mb-1">Room Code</div>
+          <div className="text-2xl font-bold text-white tracking-widest">{roomId}</div>
+          <div className="flex gap-2 mt-3">
+            {players.map((player) => (
+              <div
+                key={player.id}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  player.ready
+                    ? "bg-green-400 shadow-lg shadow-green-400/50"
+                    : "bg-gray-500"
+                }`}
+                title={player.name}
+              />
+            ))}
+            {Array.from({ length: 4 - players.length }).map((_, i) => (
+              <div
+                key={`empty-${i}`}
+                className="w-3 h-3 rounded-full border border-gray-600 border-dashed"
+              />
+            ))}
+          </div>
         </div>
       </div>
-    )}
-    <div className="absolute top-4 left-4">
-      <div className="text-lg font-semibold">Room: {roomId}</div>
-      <div className="flex gap-2 mt-2">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className={`w-4 h-4 rounded-full ${
-              player.ready ? "bg-green-500" : "bg-gray-500"
-            }`}
-            title={player.id}
-          />
-        ))}
-        {Array.from({ length: 4 - players.length }).map((_, i) => (
-          <div
-            key={`empty-${i}`}
-            className="w-4 h-4 rounded-full border-2 border-gray-500 border-dashed"
-          />
-        ))}
-      </div>
-    </div>
-    {gameStarted && (() => {
-      const myIndex = playerCardCounts.findIndex((p) => p.id === socket.id);
-      const totalPlayers = playerCardCounts.length;
 
-      // Position styles for opponents: right, top, left (clockwise from current player)
-      const positions = [
-        "fixed right-4 top-1/2 -translate-y-1/2", // 1 after me (right)
-        "fixed top-4 left-1/2 -translate-x-1/2",   // 2 after me (top/across)
-        "fixed left-4 top-1/2 -translate-y-1/2",   // 3 after me (left)
-      ];
+      {/* Opponent Cards */}
+      {gameStarted && (() => {
+        const myIndex = playerCardCounts.findIndex((p) => p.id === socket.id);
+        const totalPlayers = playerCardCounts.length;
 
-      return playerCardCounts
-        .map((player, index) => {
+        const positions = [
+          "fixed right-6 top-1/2 -translate-y-1/2",
+          "fixed top-6 left-1/2 -translate-x-1/2",
+          "fixed left-6 top-1/2 -translate-y-1/2",
+        ];
+
+        return playerCardCounts.map((player, index) => {
           if (player.id === socket.id) return null;
 
-          // Calculate relative position (how many seats clockwise from me)
           const relativePos = (index - myIndex + totalPlayers) % totalPlayers;
           const positionClass = positions[relativePos - 1] || positions[0];
+          const isCurrentTurn = currentPlayerId === player.id;
 
           return (
             <div
               key={player.id}
-              className={`${positionClass} p-2 rounded-lg ${
-                currentPlayerId === player.id
-                  ? "bg-yellow-500/50 ring-2 ring-yellow-400"
-                  : "bg-gray-800/50"
-              }`}
+              className={`${positionClass} z-10 transition-all duration-500`}
             >
-              <div className="text-sm mb-1 font-semibold">{player.name}</div>
-              <div className="flex">
-                {Array.from({ length: player.count }).map((_, i) => (
-                  <img
-                    key={i}
-                    src={cardBackImage}
-                    className={`w-6 rounded-sm ${i > 0 ? "-ml-4" : ""}`}
-                    style={{ zIndex: i }}
-                    alt="card"
-                  />
-                ))}
+              <div
+                className={`p-4 rounded-2xl backdrop-blur-md border transition-all duration-300 ${
+                  isCurrentTurn
+                    ? "bg-yellow-500/20 border-yellow-400/50 shadow-lg shadow-yellow-400/20 scale-105"
+                    : "bg-black/30 border-white/10 hover:bg-black/40"
+                }`}
+              >
+                <div className={`text-sm font-bold mb-2 ${isCurrentTurn ? "text-yellow-300" : "text-white/80"}`}>
+                  {player.name}
+                  {isCurrentTurn && <span className="ml-2 text-xs animate-pulse">Playing...</span>}
+                </div>
+                <div className="flex">
+                  {Array.from({ length: player.count }).map((_, i) => (
+                    <img
+                      key={i}
+                      src={cardBackImage}
+                      className={`w-8 rounded-md shadow-md ${i > 0 ? "-ml-5" : ""}`}
+                      style={{ zIndex: i }}
+                      alt="card"
+                    />
+                  ))}
+                  {player.count === 0 && (
+                    <span className="text-xs text-gray-400 italic">No cards</span>
+                  )}
+                </div>
               </div>
             </div>
           );
         });
-    })()}
-    {curPlayer && !gameOver && (
-      <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="text-3xl font-bold text-yellow-400 bg-black/50 px-6 py-3 rounded-lg animate-pulse">
-          It's your turn!
+      })()}
+
+      {/* Your Turn Indicator */}
+      {curPlayer && !gameOver && (
+        <div className="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="relative">
+            <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-30 animate-pulse rounded-full"></div>
+            <div className="relative text-4xl font-black text-yellow-400 bg-black/60 backdrop-blur-md px-8 py-4 rounded-2xl border border-yellow-400/30 shadow-2xl">
+              Your Turn!
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Center Table Area */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="relative">
+          {/* Table felt */}
+          <div className="w-80 h-48 bg-gradient-to-br from-emerald-800 to-emerald-900 rounded-[100px] border-8 border-amber-900/80 shadow-2xl shadow-black/50">
+            <div className="absolute inset-4 border-2 border-emerald-600/30 rounded-[80px]"></div>
+          </div>
+
+          {/* Current Play Cards */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="flex justify-center">
+              {curPlay.length > 0 ? (
+                curPlay.map((card: [number, number], index: number) => (
+                  <div key={index} className={index > 0 ? "-ml-16" : ""}>
+                    <Card
+                      inHand={false}
+                      card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-emerald-600/50 text-lg font-medium">
+                  {gameStarted ? "No cards played" : "Waiting for players..."}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    )}
-    <div className="flex flex-col items-center fixed bottom-0 left-1/2 -translate-x-1/2">
-      {!gameStarted && (
-        <button
-          className="btn mb-10 bg-green-700 hover:bg-green-900"
-          onClick={handleReadyClick}
-        >
-          Ready!
-        </button>
-      )}
-      <div className="flex mb-4">
-        {curPlay.map(
-          (card: [number, number], index: number) => (
-            <div key={index} className={index > 0 ? "-ml-20" : ""}>
-              <Card
-                inHand={false}
-                card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
-              />
-            </div>
-          )
-        )}
-      </div>
-      {gameStarted && !gameOver && (
-        <button
-          className="btn mb-10 bg-green-700 hover:bg-green-900"
-          onClick={handlePlayClick}
-        >
-          {cards.some(([, selected]) => selected) ? "Play!" : "Pass"}
-        </button>
-      )}
-      <div className="flex mb-4">
-        {cards.map(
-          ([card, selected]: [[number, number], boolean], index: number) => (
-            <div
-              key={index}
-              className={index > 0 ? "-ml-20" : ""}
-              style={{ zIndex: index }}
+
+      {/* Bottom Player Area */}
+      <div className="fixed bottom-0 left-0 right-0 z-10">
+        <div className="flex flex-col items-center pb-6">
+          {/* Ready Button (before game starts) */}
+          {!gameStarted && (
+            <button
+              className="mb-8 px-10 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white text-xl font-bold rounded-2xl shadow-lg shadow-green-500/30 hover:shadow-green-400/50 transform hover:scale-105 transition-all duration-300 border border-green-400/30"
+              onClick={handleReadyClick}
             >
-              <Card
-                selected={selected}
-                card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
-                onCardClick={() => handleCardClick(index)}
-              />
+              Ready!
+            </button>
+          )}
+
+          {/* Play/Pass Button */}
+          {gameStarted && !gameOver && (
+            <button
+              className={`mb-6 px-12 py-4 text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300 border ${
+                cards.some(([, selected]) => selected)
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white shadow-blue-500/30 hover:shadow-blue-400/50 border-blue-400/30"
+                  : "bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-gray-200 shadow-gray-500/30 border-gray-500/30"
+              }`}
+              onClick={handlePlayClick}
+            >
+              {cards.some(([, selected]) => selected) ? "Play!" : "Pass"}
+            </button>
+          )}
+
+          {/* Player's Hand */}
+          <div className="bg-black/30 backdrop-blur-sm rounded-t-3xl px-8 pt-6 pb-4 border-t border-x border-white/10">
+            <div className="flex justify-center">
+              {cards.map(
+                ([card, selected]: [[number, number], boolean], index: number) => (
+                  <div
+                    key={index}
+                    className={index > 0 ? "-ml-16" : ""}
+                    style={{ zIndex: index }}
+                  >
+                    <Card
+                      selected={selected}
+                      card={[values[card[0] - 1], suits[card[1] - 1]].join("-")}
+                      onCardClick={() => handleCardClick(index)}
+                    />
+                  </div>
+                )
+              )}
+              {cards.length === 0 && !gameStarted && (
+                <div className="text-white/40 text-lg py-8">
+                  Waiting for all players to ready up...
+                </div>
+              )}
             </div>
-          )
-        )}
+          </div>
+        </div>
       </div>
     </div>
-    </>
   );
 }
