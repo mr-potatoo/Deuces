@@ -41,12 +41,24 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         const roomId = generateRoomId();
         const game = new GameState();
         rooms.set(roomId, game);
-        
+
         socket.join(roomId);
         playerRooms.set(socket.id, roomId);
         game.addPlayer(socket.id);
-        
+
         socket.emit("roomCreated", { roomId });
+
+        // Send player list to the creator
+        const players = game.playerOrder.map(id => ({
+            id,
+            ready: game.readied.has(id)
+        }));
+        socket.emit("playerJoined", {
+            playerId: socket.id,
+            playerCount: game.playerOrder.length,
+            players
+        });
+
         console.log(`Room ${roomId} created by ${socket.id}`);
     });
 
@@ -64,16 +76,38 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
             socket.join(roomId);
             playerRooms.set(socket.id, roomId);
             console.log(`Player ${socket.id} joined room ${roomId}`);
-            
+
+            // Build players list with ready states
+            const players = game.playerOrder.map(id => ({
+                id,
+                ready: game.readied.has(id)
+            }));
+
             // Notify all players in room about new player
-            io.to(roomId).emit("playerJoined", { 
+            io.to(roomId).emit("playerJoined", {
                 playerId: socket.id,
-                playerCount: game.playerOrder.length 
+                playerCount: game.playerOrder.length,
+                players
             });
         } else {
             console.log(`Room ${roomId} full, join failed for ${socket.id}`);
             socket.emit("invalidJoin", { reason: "Room is full" });
         }
+    });
+
+    socket.on("requestRoomState", () => {
+        const roomId = playerRooms.get(socket.id);
+        if (!roomId) return;
+
+        const game = rooms.get(roomId);
+        if (!game) return;
+
+        const players = game.playerOrder.map(id => ({
+            id,
+            ready: game.readied.has(id)
+        }));
+
+        socket.emit("roomState", { players });
     });
 
     socket.on("ready", () => {
@@ -84,7 +118,10 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         if (!game) return;
 
         game.readied.add(socket.id);
-        
+
+        // Notify all players in room that this player is ready
+        io.to(roomId).emit("playerReady", { playerId: socket.id });
+
         if (game.everyoneReady() && !game.started) {
             game.startGame();
             

@@ -4,8 +4,10 @@ export interface ServerToClientEvents {
   initialize: (data: {cards: [number, number][]}) => void;
   invalidJoin: (data?: { reason: string }) => void;
   roomCreated: (data: { roomId: string }) => void;
-  playerJoined: (data: { playerId: string; playerCount: number }) => void;
+  playerJoined: (data: { playerId: string; playerCount: number; players: { id: string; ready: boolean }[] }) => void;
   playerLeft: (data: { playerId: string }) => void;
+  playerReady: (data: { playerId: string }) => void;
+  roomState: (data: { players: { id: string; ready: boolean }[] }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -13,6 +15,7 @@ export interface ClientToServerEvents {
   ready: () => void;
   createRoom: () => void;
   joinRoom: (data: { roomId: string }) => void;
+  requestRoomState: () => void;
 }
 
 export interface InterServerEvents {

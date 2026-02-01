@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { Socket } from "socket.io-client";
 import type { ServerToClientEvents, ClientToServerEvents } from "../../typings";
+
+interface Player {
+  id: string;
+  ready: boolean;
+}
 
 const suits: string[] = ["D", "C", "H", "S"];
 const values: string[] = [
@@ -58,9 +64,54 @@ export default function Game({
 }: {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>;
 }) {
+  const { roomId } = useParams<{ roomId: string }>();
   const [cards, setCards] = useState<[[number, number], boolean][]>([]);
   const [curPlay, setCurPlay] = useState<[number, number][]>([]);
   const [curPlayer, setCurPlayer] = useState<boolean>(false);
+  const [players, setPlayers] = useState<Player[]>([]);
+
+  useEffect(() => {
+    const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean }) => {
+      setCards(data.cards.map((card: [number, number]) => [card, false]));
+      setCurPlay(data.curMove);
+      setCurPlayer(data.curPlayer);
+    };
+
+    const handlePlayerJoined = (data: { playerId: string; playerCount: number; players: { id: string; ready: boolean }[] }) => {
+      setPlayers(data.players);
+    };
+
+    const handlePlayerLeft = (data: { playerId: string }) => {
+      setPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
+    };
+
+    const handlePlayerReady = (data: { playerId: string }) => {
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === data.playerId ? { ...p, ready: true } : p))
+      );
+    };
+
+    const handleRoomState = (data: { players: { id: string; ready: boolean }[] }) => {
+      setPlayers(data.players);
+    };
+
+    socket.on("updateGameState", handleUpdateGameState);
+    socket.on("playerJoined", handlePlayerJoined);
+    socket.on("playerLeft", handlePlayerLeft);
+    socket.on("playerReady", handlePlayerReady);
+    socket.on("roomState", handleRoomState);
+
+    // Request current room state when component mounts
+    socket.emit("requestRoomState");
+
+    return () => {
+      socket.off("updateGameState", handleUpdateGameState);
+      socket.off("playerJoined", handlePlayerJoined);
+      socket.off("playerLeft", handlePlayerLeft);
+      socket.off("playerReady", handlePlayerReady);
+      socket.off("roomState", handleRoomState);
+    };
+  }, [socket]);
 
   function handleCardClick(index: number) {
     const nextCards = cards.slice();
@@ -75,18 +126,32 @@ export default function Game({
     socket.emit("playMove", { selectedCards });
   }
 
-  socket.on("updateGameState", (data) => {
-    setCards(data.cards.map((card: [number, number]) => [card, false]));
-    setCurPlay(data.curMove);
-    setCurPlayer(data.curPlayer);
-  });
-
   function handleReadyClick(){
     socket.emit("ready");
   }
 
   return (
     <>
+    <div className="absolute top-4 left-4">
+      <div className="text-lg font-semibold">Room: {roomId}</div>
+      <div className="flex gap-2 mt-2">
+        {players.map((player) => (
+          <div
+            key={player.id}
+            className={`w-4 h-4 rounded-full ${
+              player.ready ? "bg-green-500" : "bg-gray-500"
+            }`}
+            title={player.id}
+          />
+        ))}
+        {Array.from({ length: 4 - players.length }).map((_, i) => (
+          <div
+            key={`empty-${i}`}
+            className="w-4 h-4 rounded-full border-2 border-gray-500 border-dashed"
+          />
+        ))}
+      </div>
+    </div>
     {curPlayer ? <div>It's your turn!</div> : null}
     <div className="flex flex-col items-center fixed bottom-0 left-1/2 -translate-x-1/2">
       <button
