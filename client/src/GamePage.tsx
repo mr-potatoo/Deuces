@@ -26,6 +26,7 @@ const values: string[] = [
 ];
 
 const cardImages: Record<string, string> = {};
+const cardBackImage = new URL("./assets/cards/cardBack.jpg", import.meta.url).href;
 
 values.forEach((val) => {
   suits.forEach((suit) => {
@@ -35,6 +36,11 @@ values.forEach((val) => {
     ).href;
   });
 });
+
+interface PlayerCardCount {
+  id: string;
+  count: number;
+}
 
 function Card({
   card,
@@ -72,12 +78,14 @@ export default function Game({
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [isWinner, setIsWinner] = useState<boolean>(false);
+  const [playerCardCounts, setPlayerCardCounts] = useState<PlayerCardCount[]>([]);
 
   useEffect(() => {
-    const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean }) => {
+    const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean; playerCardCounts: PlayerCardCount[] }) => {
       setCards(data.cards.map((card: [number, number]) => [card, false]));
       setCurPlay(data.curMove);
       setCurPlayer(data.curPlayer);
+      setPlayerCardCounts(data.playerCardCounts);
       setGameStarted(true);
     };
 
@@ -174,6 +182,28 @@ export default function Game({
         ))}
       </div>
     </div>
+    {gameStarted && (
+      <div className="absolute top-4 right-4 flex flex-col gap-4">
+        {playerCardCounts
+          .filter((p) => p.id !== socket.id)
+          .map((player, playerIndex) => (
+            <div key={player.id} className="bg-gray-800/50 p-2 rounded-lg">
+              <div className="text-sm mb-1">P{playerIndex + 1}</div>
+              <div className="flex">
+                {Array.from({ length: player.count }).map((_, i) => (
+                  <img
+                    key={i}
+                    src={cardBackImage}
+                    className={`w-6 rounded-sm ${i > 0 ? "-ml-4" : ""}`}
+                    style={{ zIndex: i }}
+                    alt="card"
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    )}
     {curPlayer ? <div>It's your turn!</div> : null}
     <div className="flex flex-col items-center fixed bottom-0 left-1/2 -translate-x-1/2">
       {!gameStarted && (

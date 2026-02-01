@@ -124,7 +124,13 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
 
         if (game.everyoneReady() && !game.started) {
             game.startGame();
-            
+
+            // Build player card counts
+            const playerCardCounts = game.playerOrder.map(id => ({
+                id,
+                count: game.getCards(id).length
+            }));
+
             // Get all sockets in this room
             io.in(roomId).fetchSockets().then(sockets => {
                 sockets.forEach(clientSocket => {
@@ -132,13 +138,15 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                         clientSocket.emit("updateGameState", {
                             cards: game.getCards(clientSocket.id),
                             curMove: [],
-                            curPlayer: true
+                            curPlayer: true,
+                            playerCardCounts
                         });
                     } else {
                         clientSocket.emit("updateGameState", {
                             cards: game.getCards(clientSocket.id),
                             curMove: [],
-                            curPlayer: false
+                            curPlayer: false,
+                            playerCardCounts
                         });
                     }
                 });
@@ -154,6 +162,12 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         if (!game) return;
 
         if (socket.id === game.curPlayer && game.playMove(socket.id, data.selectedCards)) {
+            // Build player card counts
+            const playerCardCounts = game.playerOrder.map(id => ({
+                id,
+                count: game.getCards(id).length
+            }));
+
             // Emit to all players in the room
             io.in(roomId).fetchSockets().then(sockets => {
                 sockets.forEach(clientSocket => {
@@ -161,13 +175,15 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                         clientSocket.emit("updateGameState", {
                             cards: game.getCards(clientSocket.id),
                             curMove: game.curMove,
-                            curPlayer: true
+                            curPlayer: true,
+                            playerCardCounts
                         });
                     } else {
                         clientSocket.emit("updateGameState", {
                             cards: game.getCards(clientSocket.id),
                             curMove: game.curMove,
-                            curPlayer: false
+                            curPlayer: false,
+                            playerCardCounts
                         });
                     }
                 });
