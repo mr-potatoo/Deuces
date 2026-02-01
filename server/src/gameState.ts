@@ -100,7 +100,6 @@ export class GameState {
     }
 
     victoryCheck(id: string) {
-        this.winner = id;
         return this.players[id].length === 0;
     }
 }

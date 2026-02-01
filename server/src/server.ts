@@ -172,6 +172,13 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                     }
                 });
             });
+            // Check if someone won
+            if (game.winner) {
+                io.to(roomId).emit("gameOver", { winner: game.winner });
+                console.log(`Game over in room ${roomId}. Winner: ${game.winner}`);
+                return;
+            }
+
             console.log(`Play made in room ${roomId}. It is now ${game.curPlayer}'s turn`);
         }
     });

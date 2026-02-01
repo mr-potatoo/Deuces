@@ -69,12 +69,16 @@ export default function Game({
   const [curPlay, setCurPlay] = useState<[number, number][]>([]);
   const [curPlayer, setCurPlayer] = useState<boolean>(false);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [gameStarted, setGameStarted] = useState<boolean>(false);
+  const [gameOver, setGameOver] = useState<boolean>(false);
+  const [isWinner, setIsWinner] = useState<boolean>(false);
 
   useEffect(() => {
     const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean }) => {
       setCards(data.cards.map((card: [number, number]) => [card, false]));
       setCurPlay(data.curMove);
       setCurPlayer(data.curPlayer);
+      setGameStarted(true);
     };
 
     const handlePlayerJoined = (data: { playerId: string; playerCount: number; players: { id: string; ready: boolean }[] }) => {
@@ -95,11 +99,17 @@ export default function Game({
       setPlayers(data.players);
     };
 
+    const handleGameOver = (data: { winner: string }) => {
+      setGameOver(true);
+      setIsWinner(data.winner === socket.id);
+    };
+
     socket.on("updateGameState", handleUpdateGameState);
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerLeft", handlePlayerLeft);
     socket.on("playerReady", handlePlayerReady);
     socket.on("roomState", handleRoomState);
+    socket.on("gameOver", handleGameOver);
 
     // Request current room state when component mounts
     socket.emit("requestRoomState");
@@ -110,16 +120,19 @@ export default function Game({
       socket.off("playerLeft", handlePlayerLeft);
       socket.off("playerReady", handlePlayerReady);
       socket.off("roomState", handleRoomState);
+      socket.off("gameOver", handleGameOver);
     };
   }, [socket]);
 
   function handleCardClick(index: number) {
+    if (gameOver) return;
     const nextCards = cards.slice();
     nextCards[index][1] = !nextCards[index][1];
     setCards(nextCards);
   }
 
   function handlePlayClick() {
+    if (gameOver) return;
     const selectedCards = cards
       .filter((value) => value[1] == true)
       .map((value) => value[0]);
@@ -132,6 +145,15 @@ export default function Game({
 
   return (
     <>
+    {gameOver && (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div className="text-center">
+          <h1 className={`text-6xl font-bold ${isWinner ? "text-green-400" : "text-red-400"}`}>
+            {isWinner ? "You Won!" : "You Lost"}
+          </h1>
+        </div>
+      </div>
+    )}
     <div className="absolute top-4 left-4">
       <div className="text-lg font-semibold">Room: {roomId}</div>
       <div className="flex gap-2 mt-2">
@@ -154,12 +176,14 @@ export default function Game({
     </div>
     {curPlayer ? <div>It's your turn!</div> : null}
     <div className="flex flex-col items-center fixed bottom-0 left-1/2 -translate-x-1/2">
-      <button
-        className="btn mb-10 bg-green-700 hover:bg-green-900"
-        onClick={handleReadyClick}
-      >
-        Ready!
-      </button>
+      {!gameStarted && (
+        <button
+          className="btn mb-10 bg-green-700 hover:bg-green-900"
+          onClick={handleReadyClick}
+        >
+          Ready!
+        </button>
+      )}
       <div className="flex mb-4">
         {curPlay.map(
           (card: [number, number]) => (
@@ -170,12 +194,14 @@ export default function Game({
           )
         )}
       </div>
-      <button
-        className="btn mb-10 bg-green-700 hover:bg-green-900"
-        onClick={handlePlayClick}
-      >
-        Play!
-      </button>
+      {gameStarted && !gameOver && (
+        <button
+          className="btn mb-10 bg-green-700 hover:bg-green-900"
+          onClick={handlePlayClick}
+        >
+          {cards.some(([, selected]) => selected) ? "Play!" : "Pass"}
+        </button>
+      )}
       <div className="flex mb-4">
         {cards.map(
           ([card, selected]: [[number, number], boolean], index: number) => (
