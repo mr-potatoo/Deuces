@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Socket } from "socket.io-client";
 import type { ServerToClientEvents, ClientToServerEvents } from "../../typings";
@@ -89,6 +89,8 @@ export default function Game({
   const [isWinner, setIsWinner] = useState<boolean>(false);
   const [playerCardCounts, setPlayerCardCounts] = useState<PlayerCardCount[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
+  const [invalidMove, setInvalidMove] = useState<{ id: number; message: string } | null>(null);
+  const invalidMoveIdRef = useRef(0);
 
   useEffect(() => {
     const handleUpdateGameState = (data: { cards: [number, number][]; curMove: [number, number][]; curPlayer: boolean; currentPlayerId: string; playerCardCounts: PlayerCardCount[] }) => {
@@ -123,12 +125,21 @@ export default function Game({
       setIsWinner(data.winner === socket.id);
     };
 
+    const handleInvalidMove = (data?: { reason?: string }) => {
+      const id = ++invalidMoveIdRef.current;
+      setInvalidMove({ id, message: data?.reason || "Invalid move" });
+      setTimeout(() => {
+        setInvalidMove((current) => (current?.id === id ? null : current));
+      }, 1800);
+    };
+
     socket.on("updateGameState", handleUpdateGameState);
     socket.on("playerJoined", handlePlayerJoined);
     socket.on("playerLeft", handlePlayerLeft);
     socket.on("playerReady", handlePlayerReady);
     socket.on("roomState", handleRoomState);
     socket.on("gameOver", handleGameOver);
+    socket.on("invalidMove", handleInvalidMove);
 
     // Request current room state when component mounts
     socket.emit("requestRoomState");
@@ -140,6 +151,7 @@ export default function Game({
       socket.off("playerReady", handlePlayerReady);
       socket.off("roomState", handleRoomState);
       socket.off("gameOver", handleGameOver);
+      socket.off("invalidMove", handleInvalidMove);
     };
   }, [socket]);
 
@@ -278,6 +290,18 @@ export default function Game({
           );
         });
       })()}
+
+      {/* Invalid Move Flash */}
+      {invalidMove && (
+        <div
+          key={invalidMove.id}
+          className="fixed top-[30%] left-1/2 z-40 animate-flash-message"
+        >
+          <div className="bg-red-600/90 backdrop-blur-md text-white text-2xl font-bold px-8 py-4 rounded-2xl border border-red-400/40 shadow-2xl shadow-red-500/30 whitespace-nowrap">
+            {invalidMove.message}
+          </div>
+        </div>
+      )}
 
       {/* Your Turn Indicator */}
       {curPlayer && !gameOver && (

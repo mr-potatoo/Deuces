@@ -245,45 +245,53 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         const game = rooms.get(roomId);
         if (!game) return;
 
-        if (socket.id === game.curPlayer && game.playMove(socket.id, data.selectedCards)) {
-            // Build player card counts
-            const playerCardCounts = game.playerOrder.map(id => ({
-                id,
-                name: game.getPlayerName(id),
-                count: game.getCards(id).length
-            }));
-
-            // Emit to all players in the room
-            io.in(roomId).fetchSockets().then(sockets => {
-                sockets.forEach(clientSocket => {
-                    if (clientSocket.id === game.curPlayer) {
-                        clientSocket.emit("updateGameState", {
-                            cards: game.getCards(clientSocket.id),
-                            curMove: game.curMove,
-                            curPlayer: true,
-                            currentPlayerId: game.curPlayer,
-                            playerCardCounts
-                        });
-                    } else {
-                        clientSocket.emit("updateGameState", {
-                            cards: game.getCards(clientSocket.id),
-                            curMove: game.curMove,
-                            curPlayer: false,
-                            currentPlayerId: game.curPlayer,
-                            playerCardCounts
-                        });
-                    }
-                });
-            });
-            // Check if someone won
-            if (game.winner) {
-                io.to(roomId).emit("gameOver", { winner: game.winner });
-                console.log(`Game over in room ${roomId}. Winner: ${game.winner}`);
-                return;
-            }
-
-            console.log(`Play made in room ${roomId}. It is now ${game.curPlayer}'s turn`);
+        if (socket.id !== game.curPlayer) {
+            socket.emit("invalidMove", { reason: "It's not your turn" });
+            return;
         }
+
+        if (!game.playMove(socket.id, data.selectedCards)) {
+            socket.emit("invalidMove", { reason: "That's not a valid play" });
+            return;
+        }
+
+        // Build player card counts
+        const playerCardCounts = game.playerOrder.map(id => ({
+            id,
+            name: game.getPlayerName(id),
+            count: game.getCards(id).length
+        }));
+
+        // Emit to all players in the room
+        io.in(roomId).fetchSockets().then(sockets => {
+            sockets.forEach(clientSocket => {
+                if (clientSocket.id === game.curPlayer) {
+                    clientSocket.emit("updateGameState", {
+                        cards: game.getCards(clientSocket.id),
+                        curMove: game.curMove,
+                        curPlayer: true,
+                        currentPlayerId: game.curPlayer,
+                        playerCardCounts
+                    });
+                } else {
+                    clientSocket.emit("updateGameState", {
+                        cards: game.getCards(clientSocket.id),
+                        curMove: game.curMove,
+                        curPlayer: false,
+                        currentPlayerId: game.curPlayer,
+                        playerCardCounts
+                    });
+                }
+            });
+        });
+        // Check if someone won
+        if (game.winner) {
+            io.to(roomId).emit("gameOver", { winner: game.winner });
+            console.log(`Game over in room ${roomId}. Winner: ${game.winner}`);
+            return;
+        }
+
+        console.log(`Play made in room ${roomId}. It is now ${game.curPlayer}'s turn`);
     });
 
     socket.on("disconnect", () => {

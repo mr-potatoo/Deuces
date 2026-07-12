@@ -1,6 +1,7 @@
 export interface ServerToClientEvents {
   updateGameState: (data: {cards: [number, number][], curMove: [number, number][], curPlayer: boolean, currentPlayerId: string, playerCardCounts: { id: string; name: string; count: number }[]}) => void;
   gameOver: (data: {winner: string}) => void;
+  invalidMove: (data?: { reason?: string }) => void;
   initialize: (data: {cards: [number, number][]}) => void;
   invalidJoin: (data?: { reason: string }) => void;
   roomCreated: (data: { roomId: string }) => void;
