@@ -188,7 +188,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
         game.readied.add(socket.id);
 
         // Notify all players in room that this player is ready
-        io.to(roomId).emit("playerReady", { playerId: socket.id });
+        io.to(roomId).emit("playerReady", { playerId: socket.id, ready: true });
 
         if (game.everyoneReady() && !game.started) {
             game.startGame();
@@ -223,6 +223,19 @@ io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>)
                 });
             });
         }
+    });
+
+    socket.on("unready", () => {
+        const roomId = playerRooms.get(socket.id);
+        if (!roomId) return;
+
+        const game = rooms.get(roomId);
+        if (!game || game.started) return;
+
+        game.readied.delete(socket.id);
+
+        // Notify all players in room that this player is no longer ready
+        io.to(roomId).emit("playerReady", { playerId: socket.id, ready: false });
     });
 
     socket.on("playMove", (data) => {

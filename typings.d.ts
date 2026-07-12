@@ -6,13 +6,14 @@ export interface ServerToClientEvents {
   roomCreated: (data: { roomId: string }) => void;
   playerJoined: (data: { playerId: string; playerCount: number; players: { id: string; name: string; ready: boolean }[] }) => void;
   playerLeft: (data: { playerId: string }) => void;
-  playerReady: (data: { playerId: string }) => void;
+  playerReady: (data: { playerId: string; ready: boolean }) => void;
   roomState: (data: { players: { id: string; name: string; ready: boolean }[] }) => void;
 }
 
 export interface ClientToServerEvents {
   playMove: (data: {selectedCards: [number, number][];}) => void;
   ready: () => void;
+  unready: () => void;
   createRoom: (data: { playerName: string }) => void;
   joinRoom: (data: { roomId: string; playerName: string }) => void;
   quickJoin: (data: { playerName: string }) => void;
