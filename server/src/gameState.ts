@@ -9,8 +9,8 @@ const deck: Card[] = Array.from({ length: 13 }, (_, value) =>
     )
 ).reduce((acc, val) => acc.concat(val), []);
 
-function shuffle(deck: Card[]) {
-    const shuffled = [...deck];
+function shuffle<T>(items: T[]): T[] {
+    const shuffled = [...items];
     return shuffled.reduceRight((shuffled, _, i) => {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -70,7 +70,7 @@ export class GameState {
         this.curMove = [];
         this.winner = "";
         this.turn = 0;
-        this.curMove = [];
+        this.playerOrder = shuffle(this.playerOrder);
         this.curPlayer = this.playerOrder[0];
         this.dealCards();
     }
