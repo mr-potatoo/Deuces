@@ -2,7 +2,6 @@ export interface ServerToClientEvents {
   updateGameState: (data: {cards: [number, number][], curMove: [number, number][], curPlayer: boolean, currentPlayerId: string, playerCardCounts: { id: string; name: string; count: number }[]}) => void;
   gameOver: (data: {winner: string}) => void;
   invalidMove: (data?: { reason?: string }) => void;
-  initialize: (data: {cards: [number, number][]}) => void;
   invalidJoin: (data?: { reason: string }) => void;
   roomCreated: (data: { roomId: string }) => void;
   playerJoined: (data: { playerId: string; playerCount: number; players: { id: string; name: string; ready: boolean }[] }) => void;
@@ -19,13 +18,4 @@ export interface ClientToServerEvents {
   joinRoom: (data: { roomId: string; playerName: string }) => void;
   quickJoin: (data: { playerName: string }) => void;
   requestRoomState: () => void;
-}
-
-export interface InterServerEvents {
-  ping: () => void;
-}
-
-export interface SocketData {
-  name: string;
-  age: number;
 }

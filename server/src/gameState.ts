@@ -50,6 +50,22 @@ export class GameState {
         return this.playerNames[id] || "Unknown";
     }
 
+    getPlayersList(): { id: string; name: string; ready: boolean }[] {
+        return this.playerOrder.map(id => ({
+            id,
+            name: this.getPlayerName(id),
+            ready: this.readied.has(id)
+        }));
+    }
+
+    getPlayerCardCounts(): { id: string; name: string; count: number }[] {
+        return this.playerOrder.map(id => ({
+            id,
+            name: this.getPlayerName(id),
+            count: this.getCards(id).length
+        }));
+    }
+
     startGame(){
         this.curMove = [];
         this.winner = "";
