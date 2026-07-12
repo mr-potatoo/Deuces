@@ -46,9 +46,8 @@ export function getMoveInfo(
     }
 
     // check straight and flush (and both)
-    const sortedCards = cards.sort((a, b) => a[0] - b[0]);
+    const sortedCards = [...cards].sort((a, b) => a[0] - b[0]);
     const isFlush = cards.every((val) => val[1] === cards[0][1]);
-    console.log(sortedCards);
     const isStraight = sortedCards.every(
       (val, index) =>
         index === 0 ||
@@ -57,13 +56,13 @@ export function getMoveInfo(
     );
     if (isStraight && isFlush) {
       rank = "straight flush";
-      maxCard = sortedCards[-1];
+      maxCard = sortedCards[sortedCards.length - 1];
     } else if (isFlush) {
       rank = "flush";
-      maxCard = sortedCards[-1];
+      maxCard = sortedCards[sortedCards.length - 1];
     } else if (isStraight) {
       rank = "straight";
-      maxCard = sortedCards[-1];
+      maxCard = sortedCards[sortedCards.length - 1];
     }
   }
   return [rank, maxCard];
