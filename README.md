@@ -14,6 +14,8 @@ npm run dev:client   # starts the client on http://localhost:5173
 
 Open `http://localhost:5173` in a browser (4 tabs/windows, or incognito windows, to test a full game locally).
 
+Run the test suite with `npm test` (or `npm run test:client` / `npm run test:server` individually).
+
 ## How to play
 
 1. **Enter your name** on the home screen.
