@@ -69,10 +69,15 @@ export class GameState {
     startGame(){
         this.curMove = [];
         this.winner = "";
-        this.turn = 0;
         this.playerOrder = shuffle(this.playerOrder);
-        this.curPlayer = this.playerOrder[0];
         this.dealCards();
+
+        // The player holding the 2 of diamonds (the lowest card) goes first
+        const startingPlayer = this.playerOrder.find(id =>
+            this.players[id].some(([value, suit]) => value === 1 && suit === 1)
+        )!;
+        this.turn = this.playerOrder.indexOf(startingPlayer);
+        this.curPlayer = startingPlayer;
     }
 
     dealCards() {

@@ -36,7 +36,7 @@ A standard 52-card deck (no jokers), dealt evenly so each of the 4 players gets 
 
 ### Turn order
 
-Turn order is randomized fresh at the start of every game — it isn't based on who created the room or joined first. Whoever goes first may open with any legal hand.
+Seating order is randomized fresh at the start of every game — it isn't based on who created the room or joined first. Whoever is dealt the **2 of Diamonds** (the lowest card in the deck) leads the first hand of the game.
 
 ### Making a play
 
