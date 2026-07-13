@@ -4,12 +4,19 @@ import { cardHigher, getMoveInfo, checkValidMove } from "./gameLogic";
 type Card = [number, number];
 
 // Card values: 1 = "2" ... 13 = "A". Suits: 1 = D, 2 = C, 3 = H, 4 = S.
+// Strength order is standard Big Two: 3 lowest ... A, with 2 (value 1) HIGHEST.
 const c = (value: number, suit: number): Card => [value, suit];
 
 describe("cardHigher", () => {
   it("ranks by value first", () => {
     expect(cardHigher(c(5, 1), c(4, 4))).toBe(true);
     expect(cardHigher(c(4, 4), c(5, 1))).toBe(false);
+  });
+
+  it("ranks the 2 above every other card, including the ace", () => {
+    expect(cardHigher(c(1, 1), c(13, 4))).toBe(true); // 2D beats AS
+    expect(cardHigher(c(13, 4), c(1, 1))).toBe(false);
+    expect(cardHigher(c(1, 4), c(1, 1))).toBe(true); // 2S beats 2D on suit
   });
 
   it("breaks ties on equal value by suit", () => {
@@ -62,9 +69,16 @@ describe("getMoveInfo", () => {
     expect(getMoveInfo(hand)[0]).toBe("straight");
   });
 
-  it("classifies the ace-low wheel straight (2-3-4-5-A)", () => {
-    const hand: Card[] = [c(1, 1), c(2, 2), c(3, 3), c(4, 4), c(13, 1)];
-    expect(getMoveInfo(hand)[0]).toBe("straight");
+  it("classifies 2-3-4-5-6 as a straight topped by the 2", () => {
+    const hand: Card[] = [c(1, 3), c(2, 2), c(3, 3), c(4, 4), c(5, 1)];
+    const [rank, maxCard] = getMoveInfo(hand);
+    expect(rank).toBe("straight");
+    expect(maxCard).toEqual([1, 3]); // the 2 is the strongest card
+  });
+
+  it("rejects A-2-3-4-5 (regression: the old ace-low wheel is invalid)", () => {
+    const hand: Card[] = [c(13, 1), c(1, 1), c(2, 2), c(3, 3), c(4, 4)];
+    expect(getMoveInfo(hand)[0]).toBe("");
   });
 
   it("does not treat a non-consecutive gap as a straight", () => {
@@ -118,6 +132,32 @@ describe("checkValidMove", () => {
     expect(checkValidMove([c(5, 1)], [c(5, 4)])).toBe(false);
   });
 
+  it("beats an ace with a 2 for singles, pairs, and full houses", () => {
+    expect(checkValidMove([c(1, 1)], [c(13, 4)])).toBe(true);
+    expect(checkValidMove([c(13, 4)], [c(1, 1)])).toBe(false);
+    expect(checkValidMove([c(1, 1), c(1, 2)], [c(13, 3), c(13, 4)])).toBe(true);
+    const acesFullOfKings: Card[] = [c(13, 1), c(13, 2), c(13, 3), c(12, 1), c(12, 2)];
+    const twosFullOfThrees: Card[] = [c(1, 1), c(1, 2), c(1, 3), c(2, 1), c(2, 2)];
+    expect(checkValidMove(twosFullOfThrees, acesFullOfKings)).toBe(true);
+    expect(checkValidMove(acesFullOfKings, twosFullOfThrees)).toBe(false);
+  });
+
+  it("ranks 2-3-4-5-6 as the highest straight, above 10-J-Q-K-A", () => {
+    const twoToSix: Card[] = [c(1, 1), c(2, 2), c(3, 3), c(4, 4), c(5, 1)];
+    const tenToAce: Card[] = [c(9, 1), c(10, 2), c(11, 3), c(12, 4), c(13, 4)];
+    const nineToKing: Card[] = [c(8, 1), c(9, 2), c(10, 3), c(11, 4), c(12, 1)];
+    expect(checkValidMove(twoToSix, tenToAce)).toBe(true);
+    expect(checkValidMove(tenToAce, twoToSix)).toBe(false);
+    expect(checkValidMove(tenToAce, nineToKing)).toBe(true);
+  });
+
+  it("tops a flush containing a 2 with the 2, beating an ace-high flush", () => {
+    const aceHighFlush: Card[] = [c(2, 1), c(5, 1), c(8, 1), c(11, 1), c(13, 1)];
+    const twoHighFlush: Card[] = [c(1, 2), c(3, 2), c(5, 2), c(7, 2), c(9, 2)];
+    expect(getMoveInfo(twoHighFlush)[1]).toEqual([1, 2]);
+    expect(checkValidMove(twoHighFlush, aceHighFlush)).toBe(true);
+  });
+
   it("a higher-ranked 5-card hand type beats a lower one regardless of card values", () => {
     const lowFlush: Card[] = [c(2, 1), c(5, 1), c(8, 1), c(11, 1), c(13, 1)];
     const smallStraight: Card[] = [c(1, 2), c(2, 3), c(3, 4), c(4, 1), c(5, 2)];
@@ -125,8 +165,8 @@ describe("checkValidMove", () => {
   });
 
   it("rejects a 5-card hand of equal rank but a lower top card", () => {
-    const lowerFlush: Card[] = [c(1, 1), c(3, 1), c(5, 1), c(7, 1), c(9, 1)];
-    const higherFlush: Card[] = [c(2, 1), c(5, 1), c(8, 1), c(11, 1), c(13, 1)];
+    const lowerFlush: Card[] = [c(2, 1), c(3, 1), c(5, 1), c(7, 1), c(9, 1)];
+    const higherFlush: Card[] = [c(2, 2), c(5, 2), c(8, 2), c(11, 2), c(13, 2)];
     expect(checkValidMove(lowerFlush, higherFlush)).toBe(false);
   });
 });

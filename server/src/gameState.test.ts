@@ -69,14 +69,14 @@ describe("GameState.startGame", () => {
     });
   });
 
-  it("always starts with whoever holds the 2 of diamonds", () => {
+  it("always starts with whoever holds the 3 of diamonds", () => {
     for (let i = 0; i < 20; i++) {
       const { game } = readyFourPlayerGame();
       game.startGame();
 
       const starterHand = game.getCards(game.curPlayer);
-      const hasTwoOfDiamonds = starterHand.some(([v, s]) => v === 1 && s === 1);
-      expect(hasTwoOfDiamonds).toBe(true);
+      const hasThreeOfDiamonds = starterHand.some(([v, s]) => v === 2 && s === 1);
+      expect(hasThreeOfDiamonds).toBe(true);
 
       // turn index must line up with curPlayer's seat so rotation continues correctly
       expect(game.playerOrder[game.turn % 4]).toBe(game.curPlayer);
@@ -96,27 +96,47 @@ describe("GameState.startGame", () => {
 
 describe("GameState.playMove", () => {
   let game: GameState;
+  const threeOfDiamonds: [number, number] = [2, 1];
 
   beforeEach(() => {
     game = readyFourPlayerGame().game;
     game.startGame();
   });
 
-  it("advances the turn and increments passCtr on a pass", () => {
-    const startingPlayer = game.curPlayer;
-    const startingTurn = game.turn;
+  // The starter always holds the 3 of diamonds and must open with it
+  function playOpening() {
+    expect(game.playMove(game.curPlayer, [threeOfDiamonds])).toBe(true);
+  }
 
-    expect(game.playMove(startingPlayer, [])).toBe(true);
+  it("rejects a pass as the game's first move", () => {
+    const turnBefore = game.turn;
+    expect(game.playMove(game.curPlayer, [])).toBe(false);
+    expect(game.turn).toBe(turnBefore);
+    expect(game.passCtr).toBe(0);
+  });
+
+  it("rejects a first move that doesn't include the 3 of diamonds", () => {
+    const player = game.curPlayer;
+    const otherCard = game
+      .getCards(player)
+      .find(([v, s]) => !(v === 2 && s === 1))!;
+
+    expect(game.playMove(player, [otherCard])).toBe(false);
+    expect(game.playMove(player, [threeOfDiamonds])).toBe(true);
+  });
+
+  it("advances the turn and increments passCtr on a pass", () => {
+    playOpening();
+    const turnAfterOpening = game.turn;
+
+    expect(game.playMove(game.curPlayer, [])).toBe(true);
     expect(game.passCtr).toBe(1);
-    expect(game.turn).toBe(startingTurn + 1);
-    expect(game.curPlayer).toBe(game.playerOrder[(startingTurn + 1) % 4]);
+    expect(game.turn).toBe(turnAfterOpening + 1);
+    expect(game.curPlayer).toBe(game.playerOrder[(turnAfterOpening + 1) % 4]);
   });
 
   it("clears curMove after 3 consecutive passes", () => {
-    // Give the starting player a move to put on the table first
-    const starter = game.curPlayer;
-    const starterHand = game.getCards(starter);
-    game.playMove(starter, [starterHand[0]]);
+    playOpening();
     expect(game.curMove).toHaveLength(1);
 
     game.playMove(game.curPlayer, []);
@@ -140,22 +160,54 @@ describe("GameState.playMove", () => {
     expect(game.turn).toBe(turnBefore);
   });
 
+  it("rejects cards the player doesn't hold, leaving state unchanged", () => {
+    const starter = game.curPlayer;
+    playOpening();
+    const starterCard = game.getCards(starter)[0];
+    const player = game.curPlayer;
+    const handBefore = [...game.getCards(player)];
+    const turnBefore = game.turn;
+
+    // any single beats the 3 of diamonds, so only ownership can reject this
+    expect(game.playMove(player, [starterCard])).toBe(false);
+    expect(game.getCards(player)).toEqual(handBefore);
+    expect(game.turn).toBe(turnBefore);
+  });
+
+  it("rejects a move containing the same card twice", () => {
+    // without the duplicate check this would classify as a valid opening double
+    expect(
+      game.playMove(game.curPlayer, [threeOfDiamonds, threeOfDiamonds])
+    ).toBe(false);
+  });
+
   it("removes played cards from the hand and resets passCtr", () => {
     const player = game.curPlayer;
-    const card = game.getCards(player)[0];
 
-    expect(game.playMove(player, [card])).toBe(true);
-    expect(game.getCards(player)).not.toContainEqual(card);
+    playOpening();
+    expect(game.getCards(player)).not.toContainEqual(threeOfDiamonds);
     expect(game.passCtr).toBe(0);
-    expect(game.curMove).toEqual([card]);
+    expect(game.curMove).toEqual([threeOfDiamonds]);
+  });
+
+  it("records every play and pass in moveHistory", () => {
+    const starter = game.curPlayer;
+    playOpening();
+    const passer = game.curPlayer;
+    game.playMove(passer, []);
+
+    expect(game.moveHistory).toEqual([
+      { id: starter, cards: [threeOfDiamonds] },
+      { id: passer, cards: [] },
+    ]);
   });
 
   it("declares a winner the moment a player empties their hand", () => {
     const player = game.curPlayer;
-    // Force the player down to a single card, then play it
-    game.players[player] = [game.getCards(player)[0]];
+    // Force the starter down to just the 3 of diamonds, then open with it
+    game.players[player] = [threeOfDiamonds];
 
-    expect(game.playMove(player, game.players[player])).toBe(true);
+    expect(game.playMove(player, [threeOfDiamonds])).toBe(true);
     expect(game.winner).toBe(player);
   });
 });

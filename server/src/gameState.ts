@@ -24,6 +24,8 @@ export class GameState {
     // list of ids
     playerOrder: string[] = [];
     curMove: Card[] = [];
+    // every play and pass this game, in order; a pass is cards: []
+    moveHistory: { id: string; cards: Card[] }[] = [];
     winner: string = "";
     readied: Set<string> = new Set();
     turn: number = 0;
@@ -68,13 +70,15 @@ export class GameState {
 
     startGame(){
         this.curMove = [];
+        this.moveHistory = [];
+        this.passCtr = 0;
         this.winner = "";
         this.playerOrder = shuffle(this.playerOrder);
         this.dealCards();
 
-        // The player holding the 2 of diamonds (the lowest card) goes first
+        // The player holding the 3 of diamonds (the lowest card) goes first
         const startingPlayer = this.playerOrder.find(id =>
-            this.players[id].some(([value, suit]) => value === 1 && suit === 1)
+            this.players[id].some(([value, suit]) => value === 2 && suit === 1)
         )!;
         this.turn = this.playerOrder.indexOf(startingPlayer);
         this.curPlayer = startingPlayer;
@@ -102,8 +106,28 @@ export class GameState {
         return this.players[id];
     }
 
+    // the submitted cards must all be in the player's hand, with no duplicates
+    ownsCards(id: string, move: Card[]): boolean {
+        const seen = new Set<string>();
+        return move.every(([value, suit]) => {
+            const key = `${value},${suit}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return this.players[id].some(
+                (handCard) => handCard[0] === value && handCard[1] === suit
+            );
+        });
+    }
+
     playMove(id: string, move: Card[]) {
+        // the game's first move cannot be a pass and must include the 3 of diamonds
+        if (this.moveHistory.length === 0 &&
+            (move.length === 0 || !move.some(([value, suit]) => value === 2 && suit === 1))
+        ) {
+            return false;
+        }
         if (move.length == 0){
+            this.moveHistory.push({ id, cards: [] });
             this.passCtr++;
             if (this.passCtr === 3){
                 this.curMove = [];
@@ -111,10 +135,11 @@ export class GameState {
             this.turn++;
             this.curPlayer = this.playerOrder[this.turn%4];
             return true;
-        } else if (checkValidMove(move, this.curMove)) {
+        } else if (this.ownsCards(id, move) && checkValidMove(move, this.curMove)) {
             this.players[id] = this.players[id].filter((handCard) => !move.some(moveCard =>
                 handCard[0] === moveCard[0] && handCard[1] === moveCard[1]
             ));
+            this.moveHistory.push({ id, cards: move });
             this.curMove = move;
             this.passCtr = 0;
             if (this.victoryCheck(id)) {

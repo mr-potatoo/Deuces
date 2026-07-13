@@ -7,9 +7,16 @@ const rankToVal: Record<string, number> = {
   "straight flush": 5,
 };
 
+// strength of a card value: 3 lowest ... A, 2 highest (value 1 = face "2")
+export function cardOrder(value: number): number {
+  return value === 1 ? 14 : value;
+}
+
 // returns true if the first card is greater than the second card
 export function cardHigher(card1: [number, number], card2: [number, number]) {
-  if (card1[0] > card2[0] || (card1[0] == card2[0] && card1[1] > card2[1])) {
+  const order1 = cardOrder(card1[0]);
+  const order2 = cardOrder(card2[0]);
+  if (order1 > order2 || (order1 == order2 && card1[1] > card2[1])) {
     return true;
   }
   return false;
@@ -46,23 +53,26 @@ export function getMoveInfo(
     }
 
     // check straight and flush (and both)
+    // consecutive raw values cover exactly the legal straights: values 1-5
+    // (faces 2-3-4-5-6, the highest straight) through 9-13 (10-J-Q-K-A);
+    // A-2-3-4-5 (values 13,1,2,3,4) is not consecutive and stays invalid
     const sortedCards = [...cards].sort((a, b) => a[0] - b[0]);
     const isFlush = cards.every((val) => val[1] === cards[0][1]);
     const isStraight = sortedCards.every(
-      (val, index) =>
-        index === 0 ||
-        val[0] === sortedCards[index - 1][0] + 1 ||
-        (val[0] === 13 && sortedCards[index - 1][0] === 4)
+      (val, index) => index === 0 || val[0] === sortedCards[index - 1][0] + 1
+    );
+    const strongestCard = cards.reduce((acc, card) =>
+      cardHigher(card, acc) ? card : acc
     );
     if (isStraight && isFlush) {
       rank = "straight flush";
-      maxCard = sortedCards[sortedCards.length - 1];
+      maxCard = strongestCard;
     } else if (isFlush) {
       rank = "flush";
-      maxCard = sortedCards[sortedCards.length - 1];
+      maxCard = strongestCard;
     } else if (isStraight) {
       rank = "straight";
-      maxCard = sortedCards[sortedCards.length - 1];
+      maxCard = strongestCard;
     }
   }
   return [rank, maxCard];

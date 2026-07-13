@@ -69,12 +69,28 @@ describe("server integration", () => {
     expect(states.filter((s) => s.curPlayer)).toHaveLength(1);
   });
 
-  it("always starts the game with whoever holds the 2 of diamonds", async () => {
+  it("always starts the game with whoever holds the 3 of diamonds", async () => {
     const { sockets, states } = await createReadyGame();
     activeSockets = sockets;
 
     const starterState = states.find((s) => s.curPlayer);
-    expect(starterState.cards.some(([v, s]: [number, number]) => v === 1 && s === 1)).toBe(true);
+    expect(starterState.cards.some(([v, s]: [number, number]) => v === 2 && s === 1)).toBe(true);
+  });
+
+  it("rejects a first play that doesn't include the 3 of diamonds", async () => {
+    const { sockets, states } = await createReadyGame();
+    activeSockets = sockets;
+
+    const turnIndex = states.findIndex((s) => s.curPlayer);
+    const otherCard = states[turnIndex].cards.find(
+      ([v, s]: [number, number]) => !(v === 2 && s === 1)
+    );
+
+    const invalidP = once(sockets[turnIndex], "invalidMove");
+    sockets[turnIndex].emit("playMove", { selectedCards: [otherCard] });
+    const msg = await invalidP;
+
+    expect(msg.reason).toMatch(/not a valid play/i);
   });
 
   it("rejects a move made out of turn with a clear reason", async () => {
@@ -111,13 +127,21 @@ describe("server integration", () => {
     const { sockets, states } = await createReadyGame();
     activeSockets = sockets;
 
+    // the opening play must be the 3 of diamonds; passing is legal afterwards
     const turnIndex = states.findIndex((s) => s.curPlayer);
+    const openingEvents = sockets.map((s) => once(s, "updateGameState"));
+    sockets[turnIndex].emit("playMove", { selectedCards: [[2, 1]] });
+    const afterOpening = await Promise.all(openingEvents);
+
+    const passerIndex = afterOpening.findIndex((s) => s.curPlayer);
+    expect(passerIndex).not.toBe(turnIndex);
+
     const nextStateEvents = sockets.map((s) => once(s, "updateGameState"));
-    sockets[turnIndex].emit("playMove", { selectedCards: [] });
+    sockets[passerIndex].emit("playMove", { selectedCards: [] });
     const nextStates = await Promise.all(nextStateEvents);
 
     const nextTurnIndex = nextStates.findIndex((s) => s.curPlayer);
     expect(nextTurnIndex).not.toBe(-1);
-    expect(nextTurnIndex).not.toBe(turnIndex);
+    expect(nextTurnIndex).not.toBe(passerIndex);
   });
 });
